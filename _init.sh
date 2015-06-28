@@ -53,7 +53,7 @@ installwithpython27() {
         debugme ls -la 
         rm -f icecli-2.0.zip
     fi 
-    wget https://static-ice.ng.bluemix.net/icecli-2.0.zip &> /dev/null
+    wget https://static-ice.ng.bluemix.net/icecli-3.0.zip &> /dev/null
     pip install --user icecli-2.0.zip > cli_install.log 2>&1 
     debugme cat cli_install.log 
 }
@@ -103,14 +103,6 @@ if [ -n "$BUILD_OFFSET" ]; then
 fi 
 
 echo "APPLICATION_VERSION: $APPLICATION_VERSION"
-
-#########################################
-# Configure log file to store errors  #
-#########################################
-if [ -z "$ERROR_LOG_FILE" ]; then
-    ERROR_LOG_FILE="${EXT_DIR}/errors.log"
-    export ERROR_LOG_FILE
-fi
 
 ################################
 # Setup archive information    #
@@ -178,7 +170,6 @@ echo -e "${label_color}Successfully installed Cloud Foundry CLI ${no_color}"
 ##########################################
 # setup bluemix env
 ##########################################
-# attempt to  target env automatically
 CF_API=`cf api`
 if [ $? -eq 0 ]; then
     # find the bluemix api host
@@ -290,15 +281,14 @@ fi
 
 printEnablementInfo() {
     echo -e "${label_color}No namespace has been defined for this user ${no_color}"
-    echo -e "${label_color}A common cause of this is when the user has not been enabled for IBM Containers on Bluemix${no_color}"
     echo -e "Please check the following: "
     echo -e "   - Login to Bluemix (https://console.ng.bluemix.net)"
     echo -e "   - Select the 'IBM Containers' icon from the Dashboard" 
     echo -e "   - Select 'Create a Container'"
-    echo -e "" 
-    echo -e "If there is a message indicating that your account needs to be enabled for IBM Containers, confirm that you would like to do so, and wait for confirmation that your account has been enabled"
+    echo -e "Or using the ICE command line: "
+    echo -e "   - ice login -a api.ng.bluemix.net -H containers-api.ng.bluemix.net -R registry.ng.bluemix.net"
+    echo -e "   - ${label_color}ice namespace set [your-desired-namespace]"
 }
-
 
 # check login result 
 if [ $RESULT -eq 1 ]; then
@@ -306,7 +296,7 @@ if [ $RESULT -eq 1 ]; then
     ice namespace get 2> /dev/null
     HAS_NAMESPACE=$?
     if [ $HAS_NAMESPACE -eq 1 ]; then 
-        printEnablementInfo        
+        printEnablementInfo
     fi
     ${EXT_DIR}/print_help.sh
     exit $RESULT
