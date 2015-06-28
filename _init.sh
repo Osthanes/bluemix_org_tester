@@ -287,7 +287,7 @@ printEnablementInfo() {
     echo -e "   - Select 'Create a Container'"
     echo -e "Or using the ICE command line: "
     echo -e "   - ice login -a api.ng.bluemix.net -H containers-api.ng.bluemix.net -R registry.ng.bluemix.net"
-    echo -e "   - ${label_color}ice namespace set [your-desired-namespace]"
+    echo -e "   - ${label_color}ice namespace set [your-desired-namespace]${no_color}"
 }
 
 # check login result 
@@ -324,9 +324,8 @@ popd >/dev/null
 source $EXT_DIR/utilities/logging_utils.sh
 setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}" "${BLUEMIX_SPACE}" "${BLUEMIX_ORG}" "${BLUEMIX_TARGET}"
 
-
 ########################
-# REGISTRY INFORMATION #
+# Check Image Registry #
 ########################
 export NAMESPACE=$(ice namespace get)
 RESULT=$?
@@ -335,33 +334,14 @@ if [ $RESULT -eq 0 ]; then
         log_and_echo "$ERROR" "Did not discover namespace using ice namespace get, but no error was returned"
         printEnablementInfo
         ${EXT_DIR}/print_help.sh
-        exit $RESULT
+        # no need to exit with an error here 
     fi
 else 
     log_and_echo "$ERROR" "ice namespace get' returned an error"
     printEnablementInfo
     ${EXT_DIR}/print_help.sh    
-    exit 1
-fi 
-
-log_and_echo "$LABEL" "Users namespace is $NAMESPACE"
-export REGISTRY_URL=${CCS_REGISTRY_HOST}/${NAMESPACE}
-export FULL_REPOSITORY_NAME=${REGISTRY_URL}/${IMAGE_NAME}:${APPLICATION_VERSION}
-log_and_echo "$LABEL" "The desired image repository name will be ${FULL_REPOSITORY_NAME}"
-
-debugme echo "Validating full repository name"
-pipeline_validate_full  ${FULL_REPOSITORY_NAME} >validate.log 2>&1 
-VALID_NAME=$?
-if [ ${VALID_NAME} -ne 0 ]; then    
-    log_and_echo "$ERROR" " ${FULL_REPOSITORY_NAME} is not a valid repository name"
-    log_and_echo `cat validate.log` 
-    ${EXT_DIR}/print_help.sh
-    exit ${VALID_NAME}
-else 
-    debugme cat validate.log 
+    # no need to exit with an error here
 fi 
 
 log_and_echo "$LABEL" "Initialization complete"
 
-# run image cleanup if necessary
-. $EXT_DIR/image_utilities.sh
