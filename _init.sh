@@ -218,6 +218,7 @@ sed -i "s/ccs_host =.*/ccs_host = $CCS_API_HOST/g" $EXT_DIR/ice-cfg.ini
 sed -i "s/reg_host =.*/reg_host = $CCS_REGISTRY_HOST/g" $EXT_DIR/ice-cfg.ini
 sed -i "s/cf_api_url =.*/cf_api_url = $BLUEMIX_API_HOST/g" $EXT_DIR/ice-cfg.ini
 export ICE_CFG="ice-cfg.ini"
+cat $EXT_DIR/ice-cfg.ini 
 
 
 ################################
@@ -328,24 +329,6 @@ popd >/dev/null
 source $EXT_DIR/utilities/logging_utils.sh
 setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}" "${BLUEMIX_SPACE}" "${BLUEMIX_ORG}" "${BLUEMIX_TARGET}"
 
-########################
-# Check Image Registry #
-########################
-export NAMESPACE=$(ice namespace get)
-RESULT=$?
-if [ $RESULT -eq 0 ]; then
-    if [ -z $NAMESPACE ]; then
-        log_and_echo "$ERROR" "Did not discover namespace using ice namespace get, but no error was returned"
-        printEnablementInfo
-        ${EXT_DIR}/print_help.sh
-        # no need to exit with an error here 
-    fi
-else 
-    log_and_echo "$ERROR" "ice namespace get' returned an error"
-    printEnablementInfo
-    ${EXT_DIR}/print_help.sh    
-    # no need to exit with an error here
-fi 
 
 log_and_echo "$LABEL" "Initialization complete"
 
