@@ -57,13 +57,8 @@ installwithpython27() {
     wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py &> /dev/null
     python get-pip.py --user &> /dev/null
     export PATH=$PATH:~/.local/bin
-    if [ -f icecli-2.0.zip ]; then 
-        debugme echo "there was an existing icecli.zip"
-        debugme ls -la 
-        rm -f icecli-2.0.zip
-    fi 
-    wget https://static-ice.ng.bluemix.net/icecli-3.0.zip &> /dev/null
-    pip install --user icecli-3.0.zip > cli_install.log 2>&1 
+    wget https://static-ice.ng.bluemix.net/icecli-2.0.zip &> /dev/null
+    pip install --user icecli-2.0.zip > cli_install.log 2>&1 
     debugme cat cli_install.log 
 }
 
