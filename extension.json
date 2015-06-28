@@ -1,5 +1,5 @@
 {
-    "id": "ibm.devops.services.pipeline.container.builder",
+    "id": "ibm.devops.services.pipeline.bluemix.shell",
     "version": 2,
     "name_key": "ExtName",
     "desc_key": "ExtDesc",
