@@ -39,7 +39,16 @@ DEF_REG_PREFIX=$BETA_REG_PREFIX
 debugme() {
   [[ $DEBUG = 1 ]] && "$@" || :
 }
+
 export -f debugme 
+#########################################
+# Configure log file to store errors  #
+#########################################
+if [ -z "$ERROR_LOG_FILE" ]; then
+    ERROR_LOG_FILE="${EXT_DIR}/errors.log"
+    export ERROR_LOG_FILE
+fi
+
 installwithpython27() {
     echo "Installing Python 2.7"
     sudo apt-get update &> /dev/null
