@@ -17,7 +17,15 @@
             "type": "TextArea",
             "required": "true",
             "default_value" : "#!/bin/bash
-cf target ",
+# list running cloud foundry applications 
+cf apps 
+
+# list running container groups 
+ice groups list 
+# list running applications 
+ice ps 
+
+",
             "label_key": "COMMAND_KEY",
             "desc_key": "COMMAND_DESC"
         }
