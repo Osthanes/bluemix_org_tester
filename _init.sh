@@ -75,7 +75,7 @@ set +x
 # Configure extension PATH    #
 ###############################
 if [ -n $EXT_DIR ]; then 
-    export PATH=$EXT_DIR:$PATH
+    export PATH=$PATH:$EXT_DIR:
 fi 
 
 ################################
