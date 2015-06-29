@@ -142,7 +142,7 @@ echo "Installing Cloud Foundry CLI"
 pushd $EXT_DIR >/dev/null
 gunzip cf-linux-amd64.tgz &> /dev/null
 tar -xvf cf-linux-amd64.tar  &> /dev/null
-cf help &> /dev/null
+${EXT_DIR}/cf help &> /dev/null
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
     echo -e "${red}Could not install the Cloud Foundry CLI ${no_color}" | tee -a "$ERROR_LOG_FILE"
@@ -183,10 +183,13 @@ fi
 # setup bluemix env
 ##########################################
 # attempt to  target env automatically
-CF_API=`cf api`
+CF_API=`${EXT_DIR}/cf api`
+debugme echo -e "${label_color} cf api returned $CF_API ${no_color}"
 if [ $? -eq 0 ]; then
     # find the bluemix api host
     export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
+    debugme echo -e "${label_color} BLUEMIX_API_HOST returned $BLUEMIX_API_HOST ${no_color}"
+
     echo $BLUEMIX_API_HOST | grep 'stage1'
     if [ $? -eq 0 ]; then
         # on staging, make sure bm target is set for staging
@@ -196,7 +199,7 @@ if [ $? -eq 0 ]; then
         export BLUEMIX_TARGET="prod"
     fi
 elif [ -n "$BLUEMIX_TARGET" ]; then
-    # cf not setup yet, try manual setup
+    # ${EXT_DIR}/cf not setup yet, try manual setup
     if [ "$BLUEMIX_TARGET" == "staging" ]; then 
         echo -e "Targetting staging Bluemix"
         export BLUEMIX_API_HOST="api.stage1.ng.bluemix.net"
