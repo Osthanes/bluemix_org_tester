@@ -151,7 +151,7 @@ if [ $RESULT -ne 0 ]; then
 fi
 popd >/dev/null
 echo -e "${label_color}Successfully installed Cloud Foundry CLI ${no_color}"
-cf target 
+${EXT_DIR}/cf target 
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
     echo -e "${red}Not configured for Bluemix ${no_color}"
