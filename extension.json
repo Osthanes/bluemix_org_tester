@@ -21,7 +21,7 @@
 cf apps 
 
 # list running container groups 
-ice groups list 
+ice group list 
 # list running applications 
 ice ps 
 
