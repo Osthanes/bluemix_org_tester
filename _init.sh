@@ -135,6 +135,31 @@ else
 fi 
 export LOG_DIR=$ARCHIVE_DIR
 
+#############################
+# Install Cloud Foundry CLI #
+#############################
+echo "Installing Cloud Foundry CLI"
+pushd $EXT_DIR >/dev/null
+gunzip cf-linux-amd64.tgz &> /dev/null
+tar -xvf cf-linux-amd64.tar  &> /dev/null
+cf help &> /dev/null
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+    echo -e "${red}Could not install the Cloud Foundry CLI ${no_color}" | tee -a "$ERROR_LOG_FILE"
+    ${EXT_DIR}/print_help.sh
+    exit $RESULT
+fi
+popd >/dev/null
+echo -e "${label_color}Successfully installed Cloud Foundry CLI ${no_color}"
+cf target 
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+    echo -e "${red}Not configured for Bluemix ${no_color}"
+    cat ~/.
+else 
+    echo -e "${green}Successfully enabled with Cloud Foundry on Bluemix${no_color}"
+fi 
+
 ######################
 # Install ICE CLI    #
 ######################
@@ -154,26 +179,10 @@ if [ $RESULT -ne 0 ]; then
     echo -e "${label_color}Successfully installed IBM Container Service CLI ${no_color}"
 fi 
 
-#############################
-# Install Cloud Foundry CLI #
-#############################
-echo "Installing Cloud Foundry CLI"
-pushd $EXT_DIR >/dev/null
-gunzip cf-linux-amd64.tgz &> /dev/null
-tar -xvf cf-linux-amd64.tar  &> /dev/null
-cf help &> /dev/null
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
-    echo -e "${red}Could not install the Cloud Foundry CLI ${no_color}" | tee -a "$ERROR_LOG_FILE"
-    ${EXT_DIR}/print_help.sh
-    exit $RESULT
-fi
-popd >/dev/null
-echo -e "${label_color}Successfully installed Cloud Foundry CLI ${no_color}"
-
 ##########################################
 # setup bluemix env
 ##########################################
+# attempt to  target env automatically
 CF_API=`cf api`
 if [ $? -eq 0 ]; then
     # find the bluemix api host
@@ -195,53 +204,26 @@ elif [ -n "$BLUEMIX_TARGET" ]; then
         echo -e "Targetting production Bluemix"
         export BLUEMIX_API_HOST="api.ng.bluemix.net"
     else 
-        echo -e "${red}Unknown Bluemix environment specified${no_color}" | tee -a "$ERROR_LOG_FILE"
+        echo -e "${red}Unknown Bluemix environment specified${no_color}"
     fi 
 else 
     echo -e "Targetting production Bluemix"
     export BLUEMIX_API_HOST="api.ng.bluemix.net"
 fi
-# strip off the hostname to get full domain
-CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
-if [ -z "$API_PREFIX" ]; then
-    API_PREFIX=$DEF_API_PREFIX
-fi
-if [ -z "$REG_PREFIX" ]; then
-    REG_PREFIX=$DEF_REG_PREFIX
-fi
-# build api server hostname
-export CCS_API_HOST="${API_PREFIX}${CF_TARGET}"
-# build registry server hostname
-export CCS_REGISTRY_HOST="${REG_PREFIX}${CF_TARGET}"
-# set up the ice cfg
-sed -i "s/ccs_host =.*/ccs_host = $CCS_API_HOST/g" $EXT_DIR/ice-cfg.ini
-sed -i "s/reg_host =.*/reg_host = $CCS_REGISTRY_HOST/g" $EXT_DIR/ice-cfg.ini
-sed -i "s/cf_api_url =.*/cf_api_url = $BLUEMIX_API_HOST/g" $EXT_DIR/ice-cfg.ini
-export ICE_CFG="ice-cfg.ini"
-cat $EXT_DIR/ice-cfg.ini 
 
-
-################################
-# Login to Container Service   #
-################################
-if [ -n "$API_KEY" ]; then 
-    echo -e "${label_color}Logging on with API_KEY${no_color}"
-    debugme echo "Login command: ice $ICE_ARGS login --key ${API_KEY}"
-    #ice $ICE_ARGS login --key ${API_KEY} --host ${CCS_API_HOST} --registry ${CCS_REGISTRY_HOST} --api ${BLUEMIX_API_HOST} 
-    ice $ICE_ARGS login --key ${API_KEY} 2> /dev/null
-    RESULT=$?
-elif [ -n "$BLUEMIX_USER" ] || [ ! -f ~/.cf/config.json ]; then
+####################################
+# Check login to Bluemix Service   #
+####################################
+if [ -n "$BLUEMIX_USER" ] || [ ! -f ~/.cf/config.json ]; then
     # need to gather information from the environment 
     # Get the Bluemix user and password information 
     if [ -z "$BLUEMIX_USER" ]; then 
-        echo -e "${red} Please set BLUEMIX_USER on environment ${no_color}" | tee -a "$ERROR_LOG_FILE"
-        ${EXT_DIR}/print_help.sh
+        echo -e "${red} Please set BLUEMIX_USER on environment ${no_color} "
         exit 1
     fi 
     if [ -z "$BLUEMIX_PASSWORD" ]; then 
-        echo -e "${red} Please set BLUEMIX_PASSWORD as an environment property environment ${no_color}" | tee -a "$ERROR_LOG_FILE"
-        ${EXT_DIR}/print_help.sh    
-        exit 1 
+        echo -e "${red} Please set BLUEMIX_PASSWORD as an environment property environment ${no_color} "
+        exit 1
     fi 
     if [ -z "$BLUEMIX_ORG" ]; then 
         export BLUEMIX_ORG=$BLUEMIX_USER
@@ -257,78 +239,34 @@ elif [ -n "$BLUEMIX_USER" ] || [ ! -f ~/.cf/config.json ]; then
     echo "BLUEMIX_ORG: ${BLUEMIX_ORG}"
     echo "BLUEMIX_PASSWORD: xxxxx"
     echo ""
-    echo -e "${label_color}Logging in to Bluemix and IBM Container Service using environment properties${no_color}"
-    debugme echo "login command: ice $ICE_ARGS login --cf --host ${CCS_API_HOST} --registry ${CCS_REGISTRY_HOST} --api ${BLUEMIX_API_HOST} --user ${BLUEMIX_USER} --psswd ${BLUEMIX_PASSWORD} --org ${BLUEMIX_ORG} --space ${BLUEMIX_SPACE}"
-    ice $ICE_ARGS login --cf --host ${CCS_API_HOST} --registry ${CCS_REGISTRY_HOST} --api ${BLUEMIX_API_HOST} --user ${BLUEMIX_USER} --psswd ${BLUEMIX_PASSWORD} --org ${BLUEMIX_ORG} --space ${BLUEMIX_SPACE} 2> /dev/null
+    echo -e "${label_color}Logging in to Bluemix using environment properties${no_color}"
+    debugme echo "login command: cf login -a ${BLUEMIX_API_HOST} -u ${BLUEMIX_USER} -p XXXXX -o ${BLUEMIX_ORG} -s ${BLUEMIX_SPACE}"
+    cf login -a ${BLUEMIX_API_HOST} -u ${BLUEMIX_USER} -p ${BLUEMIX_PASSWORD} -o ${BLUEMIX_ORG} -s ${BLUEMIX_SPACE} 2> /dev/null
     RESULT=$?
 else 
-    # we are already logged in.  Simply check via ice command 
+    # we are already logged in.  Simply check via cf command 
     echo -e "${label_color}Logging into IBM Container Service using credentials passed from IBM DevOps Services ${no_color}"
-    mkdir -p ~/.ice
-    debugme cat "${EXT_DIR}/${ICE_CFG}"
-    cp ${EXT_DIR}/${ICE_CFG} ~/.ice/ice-cfg.ini
-    debugme cat ~/.ice/ice-cfg.ini
-    debugme echo "config.json:"
-    debugme cat /home/jenkins/.cf/config.json | cut -c1-2
-    debugme cat /home/jenkins/.cf/config.json | cut -c3-
-    debugme echo "testing ice login via ice info command"
-    ice --verbose info > info.log 2> /dev/null
+    cf target >/dev/null 2>/dev/null
     RESULT=$?
-    debugme cat info.log 
-    if [ $RESULT -eq 0 ]; then
-        echo "ice info was successful.  Checking login to registry server" 
-        ice images &> /dev/null
-        RESULT=$? 
-    else 
-        echo "ice info did not return successfully.  Login failed."
+    if [ ! $RESULT -eq 0 ]; then
+        echo "cf target did not return successfully.  Login failed."
     fi 
 fi 
 
-printEnablementInfo() {
-    echo -e "${label_color}No namespace has been defined for this user ${no_color}"
-    echo -e "Please check the following: "
-    echo -e "   - Login to Bluemix (https://console.ng.bluemix.net)"
-    echo -e "   - Select the 'IBM Containers' icon from the Dashboard" 
-    echo -e "   - Select 'Create a Container'"
-    echo -e "Or using the ICE command line: "
-    echo -e "   - ice login -a api.ng.bluemix.net -H containers-api.ng.bluemix.net -R registry.ng.bluemix.net"
-    echo -e "   - ${label_color}ice namespace set [your-desired-namespace]${no_color}"
-}
 
 # check login result 
 if [ $RESULT -eq 1 ]; then
-    echo -e "${red}Failed to login to IBM Container Service${no_color}" | tee -a "$ERROR_LOG_FILE"
-    ice namespace get 2> /dev/null
-    HAS_NAMESPACE=$?
-    if [ $HAS_NAMESPACE -eq 1 ]; then 
-        printEnablementInfo
-    fi
-    ${EXT_DIR}/print_help.sh
+    echo -e "${red}Failed to login to IBM Bluemix${no_color}"
     exit $RESULT
 else 
-    echo -e "${green}Successfully logged into IBM Container Service${no_color}"
-    ice info 2> /dev/null
+    echo -e "${green}Successfully logged into IBM Bluemix${no_color}"
 fi 
 
-########################
-# Setup git_retry      #
-########################
-source ${EXT_DIR}/git_util.sh
-
-################################
-# get the extensions utilities #
-################################
+# get the extensions utilities
 pushd . >/dev/null
 cd $EXT_DIR 
-git_retry clone https://github.com/Osthanes/utilities.git utilities
+git clone https://github.com/Osthanes/utilities.git utilities
 popd >/dev/null
-
-############################
-# enable logging to logmet #
-############################
+# enable logging to logmet
 source $EXT_DIR/utilities/logging_utils.sh
 setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}" "${BLUEMIX_SPACE}" "${BLUEMIX_ORG}" "${BLUEMIX_TARGET}"
-
-
-log_and_echo "$LABEL" "Initialization complete"
-
