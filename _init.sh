@@ -325,14 +325,13 @@ fi
 # Install cloud-cli for service providers #
 ###########################################
 # setup cloud controller variable 
-export CLOUD_CONTROLLER_API_HOST="https://ace.${CF_TARGET}"
-debugme "CLOUD_CONTROLLER_API_HOST:$CLOUD_CONTROLLER_API_HOST"
+export CLOUD_CONTROLLER_API_HOST="https://ace${CF_TARGET}"
+debugme echo "CLOUD_CONTROLLER_API_HOST:$CLOUD_CONTROLLER_API_HOST"
 
 pushd . 
 cd ${EXT_DIR}
-https://www.stage1.ng.bluemix.net/docs/cli/cloudcli.html
-wget --no-check-certificate ace.ng.bluemix.net/doc/cl/downloads/cloudOECommandLine.zip 
-unzip cloudOECommandLine.zip -d cloud-cli
+wget --no-check-certificate ace.ng.bluemix.net/doc/cl/downloads/cloudOECommandLine.zip &> /dev/null
+unzip cloudOECommandLine.zip -d cloud-cli &> /dev/null
 export PATH=$PATH:${EXT_DIR}/cloud-cli/bin
 cloud-cli target $CLOUD_CONTROLLER_API_HOST 
 
