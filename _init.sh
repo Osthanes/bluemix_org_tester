@@ -182,37 +182,41 @@ fi
 ##########################################
 # setup bluemix env
 ##########################################
-# attempt to  target env automatically
-CF_API=`${EXT_DIR}/cf api`
-debugme echo -e "${label_color} cf api returned $CF_API ${no_color}"
-if [ $? -eq 0 ]; then
-    # find the bluemix api host
-    export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
-    debugme echo -e "${label_color} BLUEMIX_API_HOST returned $BLUEMIX_API_HOST ${no_color}"
-
-    echo $BLUEMIX_API_HOST | grep 'stage1'
-    if [ $? -eq 0 ]; then
-        # on staging, make sure bm target is set for staging
-        export BLUEMIX_TARGET="staging"
-    else
-        # on prod, make sure bm target is set for prod
-        export BLUEMIX_TARGET="prod"
-    fi
-elif [ -n "$BLUEMIX_TARGET" ]; then
-    # ${EXT_DIR}/cf not setup yet, try manual setup
+# if user entered a choice, use that
+if [ -n "$BLUEMIX_TARGET" ]; then
+    # user entered target use that
     if [ "$BLUEMIX_TARGET" == "staging" ]; then 
-        echo -e "Targetting staging Bluemix"
         export BLUEMIX_API_HOST="api.stage1.ng.bluemix.net"
     elif [ "$BLUEMIX_TARGET" == "prod" ]; then 
-        echo -e "Targetting production Bluemix"
         export BLUEMIX_API_HOST="api.ng.bluemix.net"
     else 
-        echo -e "${red}Unknown Bluemix environment specified${no_color}" | tee -a "$ERROR_LOG_FILE"
+        log_and_echo "$ERROR" "Unknown Bluemix environment specified: ${BLUEMIX_TARGET}, Defaulting to production"
+        export BLUEMIX_TARGET="prod"
+        export BLUEMIX_API_HOST="api.ng.bluemix.net"
     fi 
-else 
-    echo -e "Targetting production Bluemix"
-    export BLUEMIX_API_HOST="api.ng.bluemix.net"
+else
+    # try to auto-detect
+    CF_API=`cf api`
+    RESULT=$?
+    if [ $RESULT -eq 0 ]; then
+        # find the bluemix api host
+        export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
+        echo $BLUEMIX_API_HOST | grep 'stage1'
+        if [ $? -eq 0 ]; then
+            # on staging, make sure bm target is set for staging
+            export BLUEMIX_TARGET="staging"
+        else
+            # on prod, make sure bm target is set for prod
+            export BLUEMIX_TARGET="prod"
+        fi
+    else 
+        # failed, assume prod
+        export BLUEMIX_TARGET="prod"
+        export BLUEMIX_API_HOST="api.ng.bluemix.net"
+    fi
 fi
+echo "Bluemix host is '${BLUEMIX_API_HOST}'"
+echo "Bluemix target is '${BLUEMIX_TARGET}'"
 # strip off the hostname to get full domain
 CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
 if [ -z "$API_PREFIX" ]; then
