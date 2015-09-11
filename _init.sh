@@ -196,7 +196,7 @@ if [ -n "$BLUEMIX_TARGET" ]; then
     fi 
 else
     # try to auto-detect
-    CF_API=`cf api`
+    CF_API=`${EXT_DIR}/cf api`
     RESULT=$?
     debugme echo "cf api returned: $CF_API"
     if [ $RESULT -eq 0 ]; then
