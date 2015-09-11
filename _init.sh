@@ -336,6 +336,12 @@ pushd .
 cd ${EXT_DIR}
 wget --no-check-certificate ace.ng.bluemix.net/doc/cl/downloads/cloudOECommandLine.zip &> /dev/null
 unzip cloudOECommandLine.zip -d cloud-cli &> /dev/null
+# cloud-cli zip structure fluctuates
+if [ ! -e "${EXT_DIR}/cloud-cli/bin" ]; then
+    if [ -d "${EXT_DIR}/bin" ]; then
+        ln -s ${EXT_DIR}/bin ${EXT_DIR}/cloud-cli/bin
+    fi
+fi
 export PATH=$PATH:${EXT_DIR}/cloud-cli/bin
 cloud-cli target $CLOUD_CONTROLLER_API_HOST 
 
