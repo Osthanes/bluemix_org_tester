@@ -343,10 +343,22 @@ if [ ! -e "${EXT_DIR}/cloud-cli/bin" ]; then
         ln -s ${EXT_DIR}/bin ${EXT_DIR}/cloud-cli/bin
     fi
 fi
+# check if the jre is included, if not then fake it
+if [ ! -d ${EXT_DIR}/cloud-cli/cloud-cli/jre ]; then
+    JRE_BIN_DIR=`which java`
+    if [ -z "$JRE_BIN_DIR" ]; then
+        echo "Installing openjdk-7-jre to support cloud-cli"
+        sudo apt-get -y install openjdk-7-jre &> /dev/null
+        JRE_BIN_DIR=`which java`
+    fi
+    mkdir ${EXT_DIR}/cloud-cli/cloud-cli/jre
+    mkdir ${EXT_DIR}/cloud-cli/cloud-cli/jre/bin
+    ln -s `which java` ${EXT_DIR}/cloud-cli/cloud-cli/jre/bin/java
+fi
 export PATH=$PATH:${EXT_DIR}/cloud-cli/bin
-cloud-cli target $CLOUD_CONTROLLER_API_HOST 
+cloud-cli target $CLOUD_CONTROLLER_API_HOST
 
-popd 
+popd
 ###########################################
 # get the extensions utilities
 ###########################################
