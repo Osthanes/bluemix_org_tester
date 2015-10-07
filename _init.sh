@@ -335,7 +335,9 @@ debugme echo "CLOUD_CONTROLLER_API_HOST:$CLOUD_CONTROLLER_API_HOST"
 
 pushd . 
 cd ${EXT_DIR}
-wget --no-check-certificate ace.ng.bluemix.net/doc/cl/downloads/cloudOECommandLine.zip &> /dev/null
+if [ ! -f "cloudOECommandLine.zip" ]; then
+    wget --no-check-certificate ace.ng.bluemix.net/doc/cl/downloads/cloudOECommandLine.zip &> /dev/null
+fi
 unzip cloudOECommandLine.zip -d cloud-cli &> /dev/null
 # cloud-cli zip structure fluctuates
 if [ ! -e "${EXT_DIR}/cloud-cli/bin" ]; then
