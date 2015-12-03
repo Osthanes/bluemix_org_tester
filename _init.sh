@@ -293,7 +293,11 @@ else
     debugme cat info.log 
     if [ $RESULT -eq 0 ]; then
         echo "ice info was successful.  Checking login to registry server" 
-        ice images &> /dev/null
+        if [[ $DEBUG = 1 ]]; then 
+            ice images
+        else
+            ice images &> /dev/null
+        fi
         RESULT=$? 
     else 
         echo "ice info did not return successfully.  Login failed."
