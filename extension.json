@@ -84,7 +84,7 @@ __EOF__
 PIPE_SCR_RESULT=$?
 # restore the saved exported vars
 for x in $(ls $EXT_DIR/save_vars); do
-    export \"$x\"=`cat $EXT_DIR/save_vars/$x`
+    export \"$x\"=\"`cat $EXT_DIR/save_vars/$x`\"
 done
 if [ $PIPE_SCR_RESULT -ne 0 ]; then
     exit $PIPE_SCR_RESULT
