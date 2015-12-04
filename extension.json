@@ -61,22 +61,22 @@ mkdir -p $EXT_DIR/save_vars
 cat > script.sh << '__EOF__'
 #!/bin/bash
 function export() {
-    builtin export "$*"
+    builtin export \"$*\"
     OIFS=$IFS
     IFS='='
-    local arry="$*"
+    local arry=\"$*\"
     for x in $arry; do
-        touch "$EXT_DIR/save_vars/$x"
+        touch \"$EXT_DIR/save_vars/$x\"
         break
     done
     IFS=$OIFS
 }
 function save_env_vars_on_exit() {
     for x in $(ls $EXT_DIR/save_vars); do
-        echo `printenv "$x"` > $EXT_DIR/save_vars/$x
+        echo `printenv \"$x\"` > $EXT_DIR/save_vars/$x
     done
 }
-trap "save_env_vars_on_exit" EXIT
+trap \"save_env_vars_on_exit\" EXIT
 #COMMAND#
 __EOF__
 # set to fail if script.sh fails
@@ -84,7 +84,7 @@ set -e
 RESULT=/bin/bash -e script.sh
 # restore the saved exported vars
 for x in $(ls $EXT_DIR/save_vars); do
-    export "$x"=`cat $EXT_DIR/save_vars/$x`
+    export \"$x\"=`cat $EXT_DIR/save_vars/$x`
 done
 "
     }
