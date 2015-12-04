@@ -55,13 +55,38 @@ INIT_END_TIME=$(date +\"%s\")
 INIT_EST_TIME=$(($INIT_END_TIME-$INIT_START_TIME))
 echo -e \"Init runtime of `date -u -d @\"$INIT_EST_TIME\" +\'%-Mm %-Ss\'`\"
 
+# allocate space to store exported vars
+mkdir -p $EXT_DIR/save_vars
 # place command into a temp script file
 cat > script.sh << '__EOF__'
+#!/bin/bash
+function export() {
+    builtin export "$*"
+    OIFS=$IFS
+    IFS='='
+    local arry="$*"
+    for x in $arry; do
+        touch "$EXT_DIR/save_vars/$x"
+        break
+    done
+    IFS=$OIFS
+}
+function save_env_vars_on_exit() {
+    for x in $(ls $EXT_DIR/save_vars); do
+        echo `printenv "$x"` > $EXT_DIR/save_vars/$x
+    done
+}
+trap "save_env_vars_on_exit" EXIT
 #COMMAND#
 __EOF__
 # set to fail if script.sh fails
 set -e
-/bin/bash -e script.sh"
+RESULT=/bin/bash -e script.sh
+# restore the saved exported vars
+for x in $(ls $EXT_DIR/save_vars); do
+    export "$x"=`cat $EXT_DIR/save_vars/$x`
+done
+"
     }
     },
     "project": "https://hub.jazz.net/project/alchemy/Alchemy-Ostanes",
