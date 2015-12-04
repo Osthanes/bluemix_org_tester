@@ -79,14 +79,16 @@ function save_env_vars_on_exit() {
 trap \"save_env_vars_on_exit\" EXIT
 #COMMAND#
 __EOF__
-# set to fail if script.sh fails
-set -e
-RESULT=/bin/bash -e script.sh
+# call the script in a subscript
+/bin/bash -e script.sh
+PIPE_SCR_RESULT=$?
 # restore the saved exported vars
 for x in $(ls $EXT_DIR/save_vars); do
     export \"$x\"=`cat $EXT_DIR/save_vars/$x`
 done
-"
+if [ $PIPE_SCR_RESULT -ne 0 ]; then
+    exit $PIPE_SCR_RESULT
+fi"
     }
     },
     "project": "https://hub.jazz.net/project/alchemy/Alchemy-Ostanes",
