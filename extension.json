@@ -62,7 +62,7 @@ cat > script.sh << '__EOF__'
 #!/bin/bash
 function export() {
     local cmd=\"builtin export $*\"
-    eval $cmd
+    eval \"$cmd\"
     OIFS=$IFS
     IFS='='
     local arry=\"$*\"
