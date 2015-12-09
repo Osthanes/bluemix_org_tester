@@ -61,12 +61,20 @@ mkdir -p $EXT_DIR/save_vars
 cat > script.sh << '__EOF__'
 #!/bin/bash
 function export() {
-    builtin export \"$*\"
+    local cmd=\"builtin export $*\"
+    eval $cmd
     OIFS=$IFS
     IFS='='
     local arry=\"$*\"
     for x in $arry; do
-        touch \"$EXT_DIR/save_vars/$x\"
+        # remove quotes
+        local temp=\"${x%\\\"}\"
+        temp=\"${x#\\\"}\"
+        # if it's got a leading -, ignore it
+        case \"$temp\" in
+            -*) continue;;
+        esac
+        touch \"$EXT_DIR/save_vars/$temp\"
         break
     done
     IFS=$OIFS
