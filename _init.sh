@@ -194,99 +194,118 @@ else
     log_and_echo "$LABEL" "Successfully enabled with Cloud Foundry on Bluemix"
 fi 
 
-######################
-# Install ICE CLI    #
-######################
-log_and_echo "$INFO" "Installing IBM Container Service CLI"
-ice help &> /dev/null
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
-    installwithpython27
+###############################################
+# Check where the containers is supported     #
+###############################################
+if [ "$CF_TARGET_URL" == "https://api.stage1.ng.bluemix.net" ] || 
+    [ "$CF_TARGET_URL" == "https://api.ng.bluemix.net" ] ||
+    [ "$CF_TARGET_URL" == "https://api.eu-gb.bluemix.net" ]; then
+   # containers is supported
+    export CONTAINERS_SUPPORTED=true
+else
+    # containers is not supported
+    export CONTAINERS_SUPPORTED=false
+fi
+
+if [ "$CONTAINERS_SUPPORTED" = true ]; then
+
+    ######################
+    # Install ICE CLI    #
+    ######################
+    log_and_echo "$INFO" "Installing IBM Container Service CLI"
     ice help &> /dev/null
     RESULT=$?
     if [ $RESULT -ne 0 ]; then
-        log_and_echo "$ERROR" "Failed to install IBM Container Service CLI"
-        debugme python --version
-        ${EXT_DIR}/print_help.sh
-        ${EXT_DIR}/utilities/sendMessage.sh -l bad -m "Failed to install IBM Container Service CLI. $(get_error_info)"
+        installwithpython27
+        ice help &> /dev/null
+        RESULT=$?
+        if [ $RESULT -ne 0 ]; then
+            log_and_echo "$ERROR" "Failed to install IBM Container Service CLI"
+            debugme python --version
+            ${EXT_DIR}/print_help.sh
+            ${EXT_DIR}/utilities/sendMessage.sh -l bad -m "Failed to install IBM Container Service CLI. $(get_error_info)"
+            exit $RESULT
+        fi
+        log_and_echo "$LABEL" "Successfully installed IBM Container Service CLI"
+    fi
+
+    ##########################################
+    # setup bluemix env
+    ##########################################
+    # if user entered a choice, use that
+    if [ -n "$BLUEMIX_TARGET" ]; then
+        # user entered target use that
+        if [ "$BLUEMIX_TARGET" == "staging" ]; then 
+            export BLUEMIX_API_HOST="api.stage1.ng.bluemix.net"
+        elif [ "$BLUEMIX_TARGET" == "prod" ]; then 
+            export BLUEMIX_API_HOST="api.ng.bluemix.net"
+        else 
+            log_and_echo "$ERROR" "Unknown Bluemix environment specified: ${BLUEMIX_TARGET}, Defaulting to production"
+            export BLUEMIX_TARGET="prod"
+            export BLUEMIX_API_HOST="api.ng.bluemix.net"
+        fi 
+    else
+        # try to auto-detect
+        CF_API=`${EXT_DIR}/cf api`
+        RESULT=$?
+        debugme echo "cf api returned: $CF_API"
+        if [ $RESULT -eq 0 ]; then
+            # find the bluemix api host
+            export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
+            echo $BLUEMIX_API_HOST | grep 'stage1'
+            if [ $? -eq 0 ]; then
+                # on staging, make sure bm target is set for staging
+                export BLUEMIX_TARGET="staging"
+            else
+                # on prod, make sure bm target is set for prod
+                export BLUEMIX_TARGET="prod"
+            fi
+        else 
+            # failed, assume prod
+            export BLUEMIX_TARGET="prod"
+            export BLUEMIX_API_HOST="api.ng.bluemix.net"
+        fi
+    fi
+    log_and_echo "$INFO" "Bluemix host is '${BLUEMIX_API_HOST}'"
+    log_and_echo "$INFO" "Bluemix target is '${BLUEMIX_TARGET}'"
+    # strip off the hostname to get full domain
+    CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
+    if [ -z "$API_PREFIX" ]; then
+        API_PREFIX=$DEF_API_PREFIX
+    fi
+    if [ -z "$REG_PREFIX" ]; then
+        REG_PREFIX=$DEF_REG_PREFIX
+    fi
+    # build api server hostname
+    export CCS_API_HOST="${API_PREFIX}${CF_TARGET}"
+    # build registry server hostname
+    export CCS_REGISTRY_HOST="${REG_PREFIX}${CF_TARGET}"
+    # set up the ice cfg
+    sed -i "s/ccs_host =.*/ccs_host = $CCS_API_HOST/g" $EXT_DIR/ice-cfg.ini
+    sed -i "s/reg_host =.*/reg_host = $CCS_REGISTRY_HOST/g" $EXT_DIR/ice-cfg.ini
+    sed -i "s/cf_api_url =.*/cf_api_url = $BLUEMIX_API_HOST/g" $EXT_DIR/ice-cfg.ini
+    export ICE_CFG="ice-cfg.ini"
+
+    ################################
+    # Login to Container Service   #
+    ################################
+    login_to_container_service
+    RESULT=$?
+    if [ $RESULT -ne 0 ]; then
         exit $RESULT
     fi
-    log_and_echo "$LABEL" "Successfully installed IBM Container Service CLI"
-fi 
 
-##########################################
-# setup bluemix env
-##########################################
-# if user entered a choice, use that
-if [ -n "$BLUEMIX_TARGET" ]; then
-    # user entered target use that
-    if [ "$BLUEMIX_TARGET" == "staging" ]; then 
-        export BLUEMIX_API_HOST="api.stage1.ng.bluemix.net"
-    elif [ "$BLUEMIX_TARGET" == "prod" ]; then 
-        export BLUEMIX_API_HOST="api.ng.bluemix.net"
-    else 
-        log_and_echo "$ERROR" "Unknown Bluemix environment specified: ${BLUEMIX_TARGET}, Defaulting to production"
-        export BLUEMIX_TARGET="prod"
-        export BLUEMIX_API_HOST="api.ng.bluemix.net"
-    fi 
-else
-    # try to auto-detect
-    CF_API=`${EXT_DIR}/cf api`
+    ############################
+    # enable logging to logmet #
+    ############################
+    setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}"
     RESULT=$?
-    debugme echo "cf api returned: $CF_API"
-    if [ $RESULT -eq 0 ]; then
-        # find the bluemix api host
-        export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
-        echo $BLUEMIX_API_HOST | grep 'stage1'
-        if [ $? -eq 0 ]; then
-            # on staging, make sure bm target is set for staging
-            export BLUEMIX_TARGET="staging"
-        else
-            # on prod, make sure bm target is set for prod
-            export BLUEMIX_TARGET="prod"
-        fi
-    else 
-        # failed, assume prod
-        export BLUEMIX_TARGET="prod"
-        export BLUEMIX_API_HOST="api.ng.bluemix.net"
+    if [ $RESULT -ne 0 ]; then
+        log_and_echo "$WARN" "LOGMET setup failed with return code ${RESULT}"
     fi
-fi
-log_and_echo "$INFO" "Bluemix host is '${BLUEMIX_API_HOST}'"
-log_and_echo "$INFO" "Bluemix target is '${BLUEMIX_TARGET}'"
-# strip off the hostname to get full domain
-CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
-if [ -z "$API_PREFIX" ]; then
-    API_PREFIX=$DEF_API_PREFIX
-fi
-if [ -z "$REG_PREFIX" ]; then
-    REG_PREFIX=$DEF_REG_PREFIX
-fi
-# build api server hostname
-export CCS_API_HOST="${API_PREFIX}${CF_TARGET}"
-# build registry server hostname
-export CCS_REGISTRY_HOST="${REG_PREFIX}${CF_TARGET}"
-# set up the ice cfg
-sed -i "s/ccs_host =.*/ccs_host = $CCS_API_HOST/g" $EXT_DIR/ice-cfg.ini
-sed -i "s/reg_host =.*/reg_host = $CCS_REGISTRY_HOST/g" $EXT_DIR/ice-cfg.ini
-sed -i "s/cf_api_url =.*/cf_api_url = $BLUEMIX_API_HOST/g" $EXT_DIR/ice-cfg.ini
-export ICE_CFG="ice-cfg.ini"
 
-################################
-# Login to Container Service   #
-################################
-login_to_container_service
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
-    exit $RESULT
-fi
-
-############################
-# enable logging to logmet #
-############################
-setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}"
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
-    log_and_echo "$WARN" "LOGMET setup failed with return code ${RESULT}"
+else
+    log_and_echo "$INFO" "Containers is not supported in this target"
 fi
 
 ###########################################
