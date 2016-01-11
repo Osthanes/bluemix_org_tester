@@ -57,6 +57,11 @@ installwithpython27() {
     wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py &> /dev/null
     python get-pip.py --user &> /dev/null
     export PATH=$PATH:~/.local/bin
+    if [ -f icecli-3.0.zip ]; then 
+        debugme echo "there was an existing icecli.zip"
+        debugme ls -la 
+        rm -f icecli-3.0.zip
+    fi 
     wget https://static-ice.ng.bluemix.net/icecli-3.0.zip &> /dev/null
     pip install --user icecli-3.0.zip > cli_install.log 2>&1 
     debugme cat cli_install.log 
@@ -77,6 +82,33 @@ set +x
 if [ -n $EXT_DIR ]; then 
     export PATH=$PATH:$EXT_DIR:
 fi 
+
+#########################################
+# Configure log file to store errors  #
+#########################################
+if [ -z "$ERROR_LOG_FILE" ]; then
+    ERROR_LOG_FILE="${EXT_DIR}/errors.log"
+    export ERROR_LOG_FILE
+fi
+
+#################################
+# Source git_util file          #
+#################################
+source ${EXT_DIR}/git_util.sh
+
+################################
+# get the extensions utilities #
+################################
+pushd . >/dev/null
+cd $EXT_DIR 
+git_retry clone https://github.com/Osthanes/utilities.git utilities
+popd >/dev/null
+
+#################################
+# Source utilities sh files     #
+#################################
+source ${EXT_DIR}/utilities/ice_utils.sh
+source ${EXT_DIR}/utilities/logging_utils.sh
 
 ################################
 # Application Name and Version #
@@ -101,36 +133,37 @@ debugme echo "installing bc"
 sudo apt-get install bc >/dev/null 2>&1
 debugme echo "done installing bc"
 if [ -n "$BUILD_OFFSET" ]; then 
-    echo "Using BUILD_OFFSET of $BUILD_OFFSET"
+    log_and_echo "$INFO" "Using BUILD_OFFSET of $BUILD_OFFSET"
     export APPLICATION_VERSION=$(echo "$APPLICATION_VERSION + $BUILD_OFFSET" | bc)
     export BUILD_NUMBER=$(echo "$BUILD_NUMBER + $BUILD_OFFSET" | bc)
 fi 
 
-echo "APPLICATION_VERSION: $APPLICATION_VERSION"
+log_and_echo "$INFO" "APPLICATION_VERSION: $APPLICATION_VERSION"
 
 ################################
 # Setup archive information    #
 ################################
 if [ -z $WORKSPACE ]; then 
-    echo -e "${red}Please set WORKSPACE in the environment${no_color}" | tee -a "$ERROR_LOG_FILE"
+    log_and_echo "$ERROR" "Please set WORKSPACE in the environment"
     ${EXT_DIR}/print_help.sh
+    ${EXT_DIR}/utilities/sendMessage.sh -l bad -m "Failed to discover namespace. $(get_error_info)"
     exit 1
 fi 
 
 if [ -z $ARCHIVE_DIR ]; then
-    echo -e "${label_color}ARCHIVE_DIR was not set, setting to WORKSPACE ${no_color}"
+    log_and_echo "$LABEL" "ARCHIVE_DIR was not set, setting to WORKSPACE ${WORKSPACE}"
     export ARCHIVE_DIR="${WORKSPACE}"
 fi
 
 if [ "$ARCHIVE_DIR" == "./" ]; then
-    echo -e "${label_color}ARCHIVE_DIR set relative, adjusting to current dir absolute ${no_color}"
+    log_and_echo "$LABEL" "ARCHIVE_DIR set relative, adjusting to current dir absolute"
     export ARCHIVE_DIR=`pwd`
 fi
 
 if [ -d $ARCHIVE_DIR ]; then
-  echo -e "Archiving to $ARCHIVE_DIR"
+  log_and_echo "$INFO" "Archiving to $ARCHIVE_DIR"
 else 
-  echo -e "Creating archive directory $ARCHIVE_DIR"
+  log_and_echo "$INFO" "Creating archive directory $ARCHIVE_DIR"
   mkdir $ARCHIVE_DIR 
 fi 
 export LOG_DIR=$ARCHIVE_DIR
@@ -138,32 +171,33 @@ export LOG_DIR=$ARCHIVE_DIR
 #############################
 # Install Cloud Foundry CLI #
 #############################
-echo "Installing Cloud Foundry CLI"
+log_and_echo "$INFO" "Installing Cloud Foundry CLI"
 pushd $EXT_DIR >/dev/null
 gunzip cf-linux-amd64.tgz &> /dev/null
 tar -xvf cf-linux-amd64.tar  &> /dev/null
 ${EXT_DIR}/cf help &> /dev/null
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
-    echo -e "${red}Could not install the Cloud Foundry CLI ${no_color}" | tee -a "$ERROR_LOG_FILE"
+    log_and_echo "$ERROR" "Could not install the Cloud Foundry CLI"
     ${EXT_DIR}/print_help.sh
+    ${EXT_DIR}/utilities/sendMessage.sh -l bad -m "Failed to install Cloud Foundry CLI. $(get_error_info)"
     exit $RESULT
 fi
 popd >/dev/null
-echo -e "${label_color}Successfully installed Cloud Foundry CLI ${no_color}"
+log_and_echo "$LABEL" "Successfully installed Cloud Foundry CLI"
 ${EXT_DIR}/cf target 
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
-    echo -e "${red}Not configured for Bluemix ${no_color}"
+    log_and_echo "$ERROR" "Not configured for Bluemix"
     cat ~/.
 else 
-    echo -e "${green}Successfully enabled with Cloud Foundry on Bluemix${no_color}"
+    log_and_echo "$LABEL" "Successfully enabled with Cloud Foundry on Bluemix"
 fi 
 
 ######################
 # Install ICE CLI    #
 ######################
-echo "Installing IBM Container Service CLI"
+log_and_echo "$INFO" "Installing IBM Container Service CLI"
 ice help &> /dev/null
 RESULT=$?
 if [ $RESULT -ne 0 ]; then
@@ -171,12 +205,13 @@ if [ $RESULT -ne 0 ]; then
     ice help &> /dev/null
     RESULT=$?
     if [ $RESULT -ne 0 ]; then
-        echo -e "${red}Failed to install IBM Container Service CLI ${no_color}" | tee -a "$ERROR_LOG_FILE"
+        log_and_echo "$ERROR" "Failed to install IBM Container Service CLI"
         debugme python --version
         ${EXT_DIR}/print_help.sh
+        ${EXT_DIR}/utilities/sendMessage.sh -l bad -m "Failed to install IBM Container Service CLI. $(get_error_info)"
         exit $RESULT
     fi
-    echo -e "${label_color}Successfully installed IBM Container Service CLI ${no_color}"
+    log_and_echo "$LABEL" "Successfully installed IBM Container Service CLI"
 fi 
 
 ##########################################
@@ -216,8 +251,8 @@ else
         export BLUEMIX_API_HOST="api.ng.bluemix.net"
     fi
 fi
-echo "Bluemix host is '${BLUEMIX_API_HOST}'"
-echo "Bluemix target is '${BLUEMIX_TARGET}'"
+log_and_echo "$INFO" "Bluemix host is '${BLUEMIX_API_HOST}'"
+log_and_echo "$INFO" "Bluemix target is '${BLUEMIX_TARGET}'"
 # strip off the hostname to get full domain
 CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
 if [ -z "$API_PREFIX" ]; then
@@ -236,99 +271,23 @@ sed -i "s/reg_host =.*/reg_host = $CCS_REGISTRY_HOST/g" $EXT_DIR/ice-cfg.ini
 sed -i "s/cf_api_url =.*/cf_api_url = $BLUEMIX_API_HOST/g" $EXT_DIR/ice-cfg.ini
 export ICE_CFG="ice-cfg.ini"
 
-
 ################################
 # Login to Container Service   #
 ################################
-if [ -n "$API_KEY" ]; then 
-    echo -e "${label_color}Logging on with API_KEY${no_color}"
-    debugme echo "Login command: ice $ICE_ARGS login --key ${API_KEY}"
-    #ice $ICE_ARGS login --key ${API_KEY} --host ${CCS_API_HOST} --registry ${CCS_REGISTRY_HOST} --api ${BLUEMIX_API_HOST} 
-    ice $ICE_ARGS login --key ${API_KEY} 2> /dev/null
-    RESULT=$?
-elif [ -n "$BLUEMIX_USER" ] || [ ! -f ~/.cf/config.json ]; then
-    # need to gather information from the environment 
-    # Get the Bluemix user and password information 
-    if [ -z "$BLUEMIX_USER" ]; then 
-        echo -e "${red} Please set BLUEMIX_USER on environment ${no_color}" | tee -a "$ERROR_LOG_FILE"
-        ${EXT_DIR}/print_help.sh
-        exit 1
-    fi 
-    if [ -z "$BLUEMIX_PASSWORD" ]; then 
-        echo -e "${red} Please set BLUEMIX_PASSWORD as an environment property environment ${no_color}" | tee -a "$ERROR_LOG_FILE"
-        ${EXT_DIR}/print_help.sh    
-        exit 1 
-    fi 
-    if [ -z "$BLUEMIX_ORG" ]; then 
-        export BLUEMIX_ORG=$BLUEMIX_USER
-        echo -e "${label_color} Using ${BLUEMIX_ORG} for Bluemix organization, please set BLUEMIX_ORG if on the environment if you wish to change this. ${no_color} "
-    fi 
-    if [ -z "$BLUEMIX_SPACE" ]; then
-        export BLUEMIX_SPACE="dev"
-        echo -e "${label_color} Using ${BLUEMIX_SPACE} for Bluemix space, please set BLUEMIX_SPACE if on the environment if you wish to change this. ${no_color} "
-    fi 
-    echo -e "${label_color}Targetting information.  Can be updated by setting environment variables${no_color}"
-    echo "BLUEMIX_USER: ${BLUEMIX_USER}"
-    echo "BLUEMIX_SPACE: ${BLUEMIX_SPACE}"
-    echo "BLUEMIX_ORG: ${BLUEMIX_ORG}"
-    echo "BLUEMIX_PASSWORD: xxxxx"
-    echo ""
-    echo -e "${label_color}Logging in to Bluemix and IBM Container Service using environment properties${no_color}"
-    debugme echo "login command: ice $ICE_ARGS login --cf --host ${CCS_API_HOST} --registry ${CCS_REGISTRY_HOST} --api ${BLUEMIX_API_HOST} --user ${BLUEMIX_USER} --psswd ${BLUEMIX_PASSWORD} --org ${BLUEMIX_ORG} --space ${BLUEMIX_SPACE}"
-    ice $ICE_ARGS login --cf --host ${CCS_API_HOST} --registry ${CCS_REGISTRY_HOST} --api ${BLUEMIX_API_HOST} --user ${BLUEMIX_USER} --psswd ${BLUEMIX_PASSWORD} --org ${BLUEMIX_ORG} --space ${BLUEMIX_SPACE} 2> /dev/null
-    RESULT=$?
-else 
-    # we are already logged in.  Simply check via ice command 
-    echo -e "${label_color}Logging into IBM Container Service using credentials passed from IBM DevOps Services ${no_color}"
-    mkdir -p ~/.ice
-    debugme cat "${EXT_DIR}/${ICE_CFG}"
-    cp ${EXT_DIR}/${ICE_CFG} ~/.ice/ice-cfg.ini
-    debugme cat ~/.ice/ice-cfg.ini
-    debugme echo "config.json:"
-    debugme cat /home/jenkins/.cf/config.json | cut -c1-2
-    debugme cat /home/jenkins/.cf/config.json | cut -c3-
-    debugme echo "testing ice login via ice info command"
-    ice --verbose info > info.log 2> /dev/null
-    RESULT=$?
-    debugme cat info.log 
-    if [ $RESULT -eq 0 ]; then
-        echo "ice info was successful.  Checking login to registry server" 
-        if [[ $DEBUG = 1 ]]; then 
-            ice images
-        else
-            ice images &> /dev/null
-        fi
-        RESULT=$? 
-    else 
-        echo "ice info did not return successfully.  Login failed."
-    fi 
-fi 
-
-printEnablementInfo() {
-    echo -e "${label_color}No namespace has been defined for this user ${no_color}"
-    echo -e "Please check the following: "
-    echo -e "   - Login to Bluemix (https://console.ng.bluemix.net)"
-    echo -e "   - Select the 'IBM Containers' icon from the Dashboard" 
-    echo -e "   - Select 'Create a Container'"
-    echo -e "Or using the ICE command line: "
-    echo -e "   - ice login -a api.ng.bluemix.net -H containers-api.ng.bluemix.net -R registry.ng.bluemix.net"
-    echo -e "   - ${label_color}ice namespace set [your-desired-namespace] ${no_color}"
-}
-
-# check login result 
-if [ $RESULT -eq 1 ]; then
-    echo -e "${red}Failed to login to IBM Container Service${no_color}" | tee -a "$ERROR_LOG_FILE"
-    ice namespace get 2> /dev/null
-    HAS_NAMESPACE=$?
-    if [ $HAS_NAMESPACE -eq 1 ]; then 
-        printEnablementInfo        
-    fi
-    ${EXT_DIR}/print_help.sh
+login_to_container_service
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
     exit $RESULT
-else 
-    echo -e "${green}Successfully logged into IBM Container Service${no_color}"
-    ice info 2> /dev/null
-fi  
+fi
+
+############################
+# enable logging to logmet #
+############################
+setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}"
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+    log_and_echo "$WARN" "LOGMET setup failed with return code ${RESULT}"
+fi
 
 ###########################################
 # Install cloud-cli for service providers #
@@ -352,7 +311,7 @@ fi
 # check if the jre is included, if not then fake it
 if [ ! -d ${EXT_DIR}/cloud-cli/cloud-cli/jre ]; then
     if [ -z `which java` ]; then
-        echo "Installing openjdk-7-jre to support cloud-cli"
+        log_and_echo "$LABEL" "Installing openjdk-7-jre to support cloud-cli"
         sudo apt-get -y install openjdk-7-jre &> /dev/null
     fi
     mkdir ${EXT_DIR}/cloud-cli/cloud-cli/jre
@@ -363,14 +322,5 @@ export PATH=$PATH:${EXT_DIR}/cloud-cli/bin
 cloud-cli target $CLOUD_CONTROLLER_API_HOST
 
 popd
-###########################################
-# get the extensions utilities
-###########################################
 
-pushd . >/dev/null
-cd $EXT_DIR 
-git clone https://github.com/Osthanes/utilities.git utilities
-popd >/dev/null
-# enable logging to logmet
-source $EXT_DIR/utilities/logging_utils.sh
-setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}" "${BLUEMIX_SPACE}" "${BLUEMIX_ORG}" "${BLUEMIX_TARGET}"
+log_and_echo "$LABEL" "Initialization complete"
