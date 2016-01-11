@@ -20,10 +20,14 @@
 # list running cloud foundry applications 
 cf apps 
 
-# list running container groups 
-ice group list 
-# list running applications 
-ice ps 
+if [ "$CONTAINERS_SUPPORTED" = true ]; then
+   # list running container groups 
+   ice group list 
+   # list running applications 
+   ice ps 
+fi
+
+${EXT_DIR}/utilities/sendMessage.sh -l good -m \"installing the BlueMix command line (cloud-cli) completed successful\"
 
 ",
             "label_key": "COMMAND_KEY",
