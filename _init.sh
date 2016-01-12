@@ -295,17 +295,17 @@ if [ "$CONTAINERS_SUPPORTED" = true ]; then
         exit $RESULT
     fi
 
-    ############################
-    # enable logging to logmet #
-    ############################
-    setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}"
-    RESULT=$?
-    if [ $RESULT -ne 0 ]; then
-        log_and_echo "$WARN" "LOGMET setup failed with return code ${RESULT}"
-    fi
-
 else
     log_and_echo "$INFO" "Containers is not supported in this target"
+fi
+
+############################
+# enable logging to logmet #
+############################
+setup_met_logging "${BLUEMIX_USER}" "${BLUEMIX_PASSWORD}"
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+    log_and_echo "$WARN" "LOGMET setup failed with return code ${RESULT}"
 fi
 
 ###########################################
