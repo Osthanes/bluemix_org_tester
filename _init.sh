@@ -292,7 +292,7 @@ if [ "$CONTAINERS_SUPPORTED" = true ]; then
     login_to_container_service
     RESULT=$?
     if [ $RESULT -ne 0 ]; then
-       exit $RESULT
+        exit $RESULT
     fi
 
     ############################
