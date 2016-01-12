@@ -20,7 +20,7 @@
 # list running cloud foundry applications 
 cf apps 
 
-if [ "$CONTAINERS_SUPPORTED" = true ]; then
+if [ \"$CONTAINERS_SUPPORTED\" = true ]; then
    # list running container groups 
    ice group list 
    # list running applications 
