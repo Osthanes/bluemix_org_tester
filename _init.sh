@@ -228,48 +228,53 @@ if [ "$CONTAINERS_SUPPORTED" = true ]; then
         fi
         log_and_echo "$LABEL" "Successfully installed IBM Container Service CLI"
     fi
+else
+    log_and_echo "$INFO" "Containers is not supported in this target, we don't need to install IBM Container Service CLI"
+fi
 
-    ##########################################
-    # setup bluemix env
-    ##########################################
-    # if user entered a choice, use that
-    if [ -n "$BLUEMIX_TARGET" ]; then
-        # user entered target use that
-        if [ "$BLUEMIX_TARGET" == "staging" ]; then 
-            export BLUEMIX_API_HOST="api.stage1.ng.bluemix.net"
-        elif [ "$BLUEMIX_TARGET" == "prod" ]; then 
-            export BLUEMIX_API_HOST="api.ng.bluemix.net"
-        else 
-            log_and_echo "$ERROR" "Unknown Bluemix environment specified: ${BLUEMIX_TARGET}, Defaulting to production"
+##########################################
+# setup bluemix env
+##########################################
+# if user entered a choice, use that
+if [ -n "$BLUEMIX_TARGET" ]; then
+    # user entered target use that
+    if [ "$BLUEMIX_TARGET" == "staging" ]; then 
+        export BLUEMIX_API_HOST="api.stage1.ng.bluemix.net"
+    elif [ "$BLUEMIX_TARGET" == "prod" ]; then 
+        export BLUEMIX_API_HOST="api.ng.bluemix.net"
+    else 
+        log_and_echo "$ERROR" "Unknown Bluemix environment specified: ${BLUEMIX_TARGET}, Defaulting to production"
+        export BLUEMIX_TARGET="prod"
+        export BLUEMIX_API_HOST="api.ng.bluemix.net"
+    fi 
+else
+    # try to auto-detect
+    CF_API=`${EXT_DIR}/cf api`
+    RESULT=$?
+    debugme echo "cf api returned: $CF_API"
+    if [ $RESULT -eq 0 ]; then
+        # find the bluemix api host
+        export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
+        echo $BLUEMIX_API_HOST | grep 'stage1'
+        if [ $? -eq 0 ]; then
+            # on staging, make sure bm target is set for staging
+            export BLUEMIX_TARGET="staging"
+        else
+            # on prod, make sure bm target is set for prod
             export BLUEMIX_TARGET="prod"
-            export BLUEMIX_API_HOST="api.ng.bluemix.net"
-        fi 
-    else
-        # try to auto-detect
-        CF_API=`${EXT_DIR}/cf api`
-        RESULT=$?
-        debugme echo "cf api returned: $CF_API"
-        if [ $RESULT -eq 0 ]; then
-            # find the bluemix api host
-            export BLUEMIX_API_HOST=`echo $CF_API  | awk '{print $3}' | sed '0,/.*\/\//s///'`
-            echo $BLUEMIX_API_HOST | grep 'stage1'
-            if [ $? -eq 0 ]; then
-                # on staging, make sure bm target is set for staging
-                export BLUEMIX_TARGET="staging"
-            else
-                # on prod, make sure bm target is set for prod
-                export BLUEMIX_TARGET="prod"
-            fi
-        else 
-            # failed, assume prod
-            export BLUEMIX_TARGET="prod"
-            export BLUEMIX_API_HOST="api.ng.bluemix.net"
         fi
+    else 
+        # failed, assume prod
+        export BLUEMIX_TARGET="prod"
+        export BLUEMIX_API_HOST="api.ng.bluemix.net"
     fi
-    log_and_echo "$INFO" "Bluemix host is '${BLUEMIX_API_HOST}'"
-    log_and_echo "$INFO" "Bluemix target is '${BLUEMIX_TARGET}'"
-    # strip off the hostname to get full domain
-    CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
+fi
+log_and_echo "$INFO" "Bluemix host is '${BLUEMIX_API_HOST}'"
+log_and_echo "$INFO" "Bluemix target is '${BLUEMIX_TARGET}'"
+# strip off the hostname to get full domain
+CF_TARGET=`echo $BLUEMIX_API_HOST | sed 's/[^\.]*//'`
+
+if [ "$CONTAINERS_SUPPORTED" = true ]; then
     if [ -z "$API_PREFIX" ]; then
         API_PREFIX=$DEF_API_PREFIX
     fi
@@ -294,7 +299,6 @@ if [ "$CONTAINERS_SUPPORTED" = true ]; then
     if [ $RESULT -ne 0 ]; then
         exit $RESULT
     fi
-
 else
     log_and_echo "$INFO" "Containers is not supported in this target"
 fi
