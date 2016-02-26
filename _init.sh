@@ -171,6 +171,8 @@ export LOG_DIR=$ARCHIVE_DIR
 #############################
 # Install Cloud Foundry CLI #
 #############################
+CF_VER=$(cf -v)
+log_and_echo "$INFO" "Existing Cloud Foundry CLI ${CF_VER}"
 log_and_echo "$INFO" "Installing Cloud Foundry CLI"
 pushd $EXT_DIR >/dev/null
 gunzip cf-linux-amd64.tgz &> /dev/null
@@ -183,16 +185,9 @@ if [ $RESULT -ne 0 ]; then
     ${EXT_DIR}/utilities/sendMessage.sh -l bad -m "Failed to install Cloud Foundry CLI. $(get_error_info)"
     exit $RESULT
 fi
+CF_VER=$(cf -v)
 popd >/dev/null
-log_and_echo "$LABEL" "Successfully installed Cloud Foundry CLI"
-${EXT_DIR}/cf target 
-RESULT=$?
-if [ $RESULT -ne 0 ]; then
-    log_and_echo "$ERROR" "Not configured for Bluemix"
-    cat ~/.
-else 
-    log_and_echo "$LABEL" "Successfully enabled with Cloud Foundry on Bluemix"
-fi 
+log_and_echo "$LABEL" "Successfully installed Cloud Foundry CLI ${CF_VER}"
 
 ###############################################
 # Check where the containers is supported     #
@@ -230,6 +225,24 @@ if [ "$CONTAINERS_SUPPORTED" = true ]; then
     fi
 else
     log_and_echo "$INFO" "Containers is not supported in this target, we don't need to install IBM Container Service CLI"
+fi
+
+#############################################
+# Install the IBM Containers plug-in (cf ic) #
+#############################################
+if [ -z "$USE_ICE_CLI" ]; then
+    export USE_ICE_CLI=1
+fi
+
+if [ "$USE_ICE_CLI" != "1" ]; then
+    export IC_COMMAND="${EXT_DIR}/cf ic"
+    install_cf_ic
+    RESULT=$?
+    if [ $RESULT -ne 0 ]; then
+        exit $RESULT
+    fi 
+else
+    export IC_COMMAND="ice"
 fi
 
 ##########################################
