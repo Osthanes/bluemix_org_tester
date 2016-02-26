@@ -22,9 +22,9 @@ cf apps
 
 if [ \"$CONTAINERS_SUPPORTED\" = true ]; then
    # list running container groups 
-   ice group list 
+   ice_retry group list 
    # list running applications 
-   ice ps 
+   ice_retry ps 
 fi
 
 ${EXT_DIR}/utilities/sendMessage.sh -l good -m \"installing the BlueMix command line (cloud-cli) completed successful\"
