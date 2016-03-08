@@ -223,23 +223,24 @@ if [ "$CONTAINERS_SUPPORTED" = true ]; then
         fi
         log_and_echo "$LABEL" "Successfully installed IBM Container Service CLI"
     fi
+    #############################################
+    # Install the IBM Containers plug-in (cf ic) #
+    #############################################
+    if [ "$USE_ICE_CLI" != "1" ]; then
+        export IC_COMMAND="${EXT_DIR}/cf ic"
+        install_cf_ic
+        RESULT=$?
+        if [ $RESULT -ne 0 ]; then
+            exit $RESULT
+        fi 
+    else
+        export IC_COMMAND="ice"
+    fi
 else
     log_and_echo "$INFO" "Containers is not supported in this target, we don't need to install IBM Container Service CLI"
 fi
 
-#############################################
-# Install the IBM Containers plug-in (cf ic) #
-#############################################
-if [ "$USE_ICE_CLI" != "1" ]; then
-    export IC_COMMAND="${EXT_DIR}/cf ic"
-    install_cf_ic
-    RESULT=$?
-    if [ $RESULT -ne 0 ]; then
-        exit $RESULT
-    fi 
-else
-    export IC_COMMAND="ice"
-fi
+
 
 ##########################################
 # setup bluemix env
