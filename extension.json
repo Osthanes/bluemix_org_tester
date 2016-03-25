@@ -38,6 +38,10 @@ ${EXT_DIR}/utilities/sendMessage.sh -l good -m \"installing the BlueMix command 
         {
             "type": "Artifacts",
             "inclusion" : "always"
+        },
+        {
+            "type": "Tests",
+            "inclusion": "optional"
         }
     ],
     "execution": {
