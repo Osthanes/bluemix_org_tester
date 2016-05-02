@@ -326,7 +326,9 @@ fi
 # Install cloud-cli for service providers #
 ###########################################
 # setup cloud controller variable 
-export CLOUD_CONTROLLER_API_HOST="https://ace${CF_TARGET}"
+if [ -n "$CLOUD_CONTROLLER_API_HOST" ]; then
+    export CLOUD_CONTROLLER_API_HOST="https://ace${CF_TARGET}"
+fi
 debugme echo "CLOUD_CONTROLLER_API_HOST:$CLOUD_CONTROLLER_API_HOST"
 
 pushd . 
