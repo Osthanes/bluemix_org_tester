@@ -322,40 +322,4 @@ if [ $RESULT -ne 0 ]; then
     log_and_echo "$WARN" "LOGMET setup failed with return code ${RESULT}"
 fi
 
-###########################################
-# Install cloud-cli for service providers #
-###########################################
-# setup cloud controller variable 
-if [ -z "$CLOUD_CONTROLLER_API_HOST" ]; then
-    export CLOUD_CONTROLLER_API_HOST="https://ace${CF_TARGET}"
-fi
-debugme echo "CLOUD_CONTROLLER_API_HOST:$CLOUD_CONTROLLER_API_HOST"
-
-pushd . 
-cd ${EXT_DIR}
-if [ ! -f "cloudOECommandLine.zip" ]; then
-    wget --no-check-certificate ace.ng.bluemix.net/doc/cl/downloads/cloudOECommandLine.zip &> /dev/null
-fi
-unzip cloudOECommandLine.zip -d cloud-cli &> /dev/null
-# cloud-cli zip structure fluctuates
-if [ ! -e "${EXT_DIR}/cloud-cli/bin" ]; then
-    if [ -d "${EXT_DIR}/bin" ]; then
-        ln -s ${EXT_DIR}/bin ${EXT_DIR}/cloud-cli/bin
-    fi
-fi
-# check if the jre is included, if not then fake it
-if [ ! -d ${EXT_DIR}/cloud-cli/cloud-cli/jre ]; then
-    if [ -z `which java` ]; then
-        log_and_echo "$LABEL" "Installing openjdk-7-jre to support cloud-cli"
-        sudo apt-get -y install openjdk-7-jre &> /dev/null
-    fi
-    mkdir ${EXT_DIR}/cloud-cli/cloud-cli/jre
-    mkdir ${EXT_DIR}/cloud-cli/cloud-cli/jre/bin
-    ln -s `which java` ${EXT_DIR}/cloud-cli/cloud-cli/jre/bin/java
-fi
-export PATH=$PATH:${EXT_DIR}/cloud-cli/bin
-cloud-cli target $CLOUD_CONTROLLER_API_HOST
-
-popd
-
 log_and_echo "$LABEL" "Initialization complete"
